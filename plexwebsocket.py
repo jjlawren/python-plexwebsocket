@@ -7,7 +7,7 @@ import aiohttp
 _LOGGER = logging.getLogger(__name__)
 
 
-class WebsocketPlayer:  #pylint: disable=too-few-public-methods
+class WebsocketPlayer:  # pylint: disable=too-few-public-methods
     """Represent an individual player state in the Plex websocket stream."""
 
     def __init__(self, session_id, state, media_key, position):
@@ -38,6 +38,7 @@ class PlexWebsocket:
         self.players = {}
         self.callback = callback
         self._active = True
+        self._current_task = None
 
     @staticmethod
     def _get_uri(plex_server):
@@ -51,13 +52,11 @@ class PlexWebsocket:
         self._active = True
         while self._active:
             async with self.session.ws_connect(self.uri) as ws_client:
+                self._current_task = asyncio.Task.current_task()
                 _LOGGER.debug("Websocket connected")
                 self.callback()
 
                 async for message in ws_client:
-                    if not self._active:
-                        ws_client.close()
-
                     msg = message.json()["NotificationContainer"]
                     if self.player_event(msg):
                         self.callback()
@@ -103,3 +102,4 @@ class PlexWebsocket:
     def close(self):
         """Close the listening websocket."""
         self._active = False
+        self._current_task.cancel()
