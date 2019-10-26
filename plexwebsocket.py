@@ -1,5 +1,6 @@
 """Support for issuing callbacks for Plex client updates via websockets."""
 import asyncio
+from datetime import datetime
 import logging
 
 import aiohttp
@@ -16,6 +17,17 @@ class WebsocketPlayer:  # pylint: disable=too-few-public-methods
         self.state = state
         self.media_key = media_key
         self.position = position
+        self.timestamp = datetime.now()
+
+    def significant_position_change(self, timestamp, new_position):
+        """Determine if position change indicates a seek."""
+        timediff = (timestamp - self.timestamp).total_seconds()
+        posdiff = (new_position - self.position) / 1000
+        diffdiff = timediff - posdiff
+
+        if abs(diffdiff) > 10:
+            return True
+        return False
 
 
 class PlexWebsocket:
@@ -67,6 +79,8 @@ class PlexWebsocket:
 
     def player_event(self, msg):
         """Determine if messages relate to an interesting player event."""
+        should_fire = False
+
         if msg["type"] == "update.statechange":
             # Fired when clients connects or disconnect
             return True
@@ -75,6 +89,7 @@ class PlexWebsocket:
             return False
 
         payload = msg["PlaySessionStateNotification"][0]
+
         session_id = payload["sessionKey"]
         state = payload["state"]
         media_key = payload["key"]
@@ -87,17 +102,21 @@ class PlexWebsocket:
             return True
 
         player = self.players[session_id]
-        if (
-                player.media_key != media_key
-                or player.state != state
-                or position < player.position
-        ):
-            player.state = state
-            player.media_key = media_key
-            player.position = position
-            return True
+        now = datetime.now()
 
-        return False
+        if payload["state"] != "buffering" and (
+            player.significant_position_change(now, position)
+            or player.media_key != media_key
+            or player.state != state
+        ):
+            should_fire = True
+
+        player.state = state
+        player.media_key = media_key
+        player.position = position
+        player.timestamp = now
+
+        return should_fire
 
     def close(self):
         """Close the listening websocket."""
