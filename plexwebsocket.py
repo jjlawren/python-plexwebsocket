@@ -63,19 +63,24 @@ class PlexWebsocket:
         """Open a persistent websocket connection and act on events."""
         self._active = True
         while self._active:
-            async with self.session.ws_connect(self.uri) as ws_client:
-                self._current_task = asyncio.Task.current_task()
-                _LOGGER.debug("Websocket connected")
-                self.callback()
+            try:
+                async with self.session.ws_connect(self.uri, heartbeat=15) as ws_client:
+                    self._current_task = asyncio.Task.current_task()
+                    _LOGGER.debug("Websocket connected")
+                    self.callback()
 
-                async for message in ws_client:
-                    msg = message.json()["NotificationContainer"]
-                    if self.player_event(msg):
-                        self.callback()
+                    async for message in ws_client:
+                        msg = message.json()["NotificationContainer"]
+                        if self.player_event(msg):
+                            self.callback()
 
-            _LOGGER.debug("Websocket disconnected")
-            if self._active:
-                await asyncio.sleep(5)
+            except aiohttp.client_exceptions.ClientConnectorError:
+                _LOGGER.debug("Websocket connection refused")
+                await asyncio.sleep(10)
+            else:
+                _LOGGER.debug("Websocket disconnected")
+                if self._active:
+                    await asyncio.sleep(5)
 
     def player_event(self, msg):
         """Determine if messages relate to an interesting player event."""
