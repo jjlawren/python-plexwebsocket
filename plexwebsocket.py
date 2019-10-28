@@ -125,7 +125,9 @@ class PlexWebsocket:
                 # State or playback item changed
                 _LOGGER.debug("State/media changed: %s", payload)
                 should_fire = True
-            elif state == "playing" and player.significant_position_change(now, position):
+            elif state == "playing" and player.significant_position_change(
+                now, position
+            ):
                 # Client continues to play and a seek was detected
                 _LOGGER.debug("Seek detected: %s", payload)
                 should_fire = True
