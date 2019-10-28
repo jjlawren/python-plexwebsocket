@@ -101,6 +101,11 @@ class PlexWebsocket:
             )
             return True
 
+        if state == "stopped":
+            # Sessions "end" when stopped
+            self.players.pop(session_id)
+            return True
+
         player = self.players[session_id]
         now = datetime.now()
 
