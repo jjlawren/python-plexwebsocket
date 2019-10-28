@@ -104,12 +104,16 @@ class PlexWebsocket:
         player = self.players[session_id]
         now = datetime.now()
 
-        if payload["state"] != "buffering" and (
-            player.significant_position_change(now, position)
-            or player.media_key != media_key
-            or player.state != state
-        ):
-            should_fire = True
+        # Ignore buffering states as transient
+        if state != "buffering":
+            if player.media_key != media_key or player.state != state:
+                # State or playback item changed
+                _LOGGER.debug("State/media changed: %s", payload)
+                should_fire = True
+            elif state == "playing" and player.significant_position_change(now, position):
+                # Client continues to play and a seek was detected
+                _LOGGER.debug("Seek detected: %s", payload)
+                should_fire = True
 
         player.state = state
         player.media_key = media_key
