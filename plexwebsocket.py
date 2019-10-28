@@ -80,6 +80,8 @@ class PlexWebsocket:
             else:
                 _LOGGER.debug("Websocket disconnected")
                 if self._active:
+                    # Session IDs reset if Plex server has restarted, be safe
+                    self.players.clear()
                     await asyncio.sleep(5)
 
     def player_event(self, msg):
