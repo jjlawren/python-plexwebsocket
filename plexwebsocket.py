@@ -73,9 +73,9 @@ class PlexWebsocket:
                     if self.player_event(msg):
                         self.callback()
 
-        _LOGGER.debug("Websocket disconnected")
-        if self._active:
-            await asyncio.sleep(5)
+            _LOGGER.debug("Websocket disconnected")
+            if self._active:
+                await asyncio.sleep(5)
 
     def player_event(self, msg):
         """Determine if messages relate to an interesting player event."""
