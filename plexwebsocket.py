@@ -83,6 +83,7 @@ class PlexWebsocket:
 
         if msg["type"] == "update.statechange":
             # Fired when clients connects or disconnect
+            _LOGGER.debug("New client device detected")
             return True
         if msg["type"] != "playing":
             # Only monitor events related to active sessions
@@ -99,11 +100,13 @@ class PlexWebsocket:
             self.players[session_id] = WebsocketPlayer(
                 session_id, state, media_key, position
             )
+            _LOGGER.debug("New session: %s", payload)
             return True
 
         if state == "stopped":
             # Sessions "end" when stopped
             self.players.pop(session_id)
+            _LOGGER.debug("Session ended: %s", payload)
             return True
 
         player = self.players[session_id]
