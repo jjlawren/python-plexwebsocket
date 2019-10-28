@@ -25,7 +25,7 @@ class WebsocketPlayer:  # pylint: disable=too-few-public-methods
         posdiff = (new_position - self.position) / 1000
         diffdiff = timediff - posdiff
 
-        if abs(diffdiff) > 10:
+        if abs(diffdiff) > 5:
             return True
         return False
 
