@@ -33,7 +33,7 @@ class WebsocketPlayer:  # pylint: disable=too-few-public-methods
 class PlexWebsocket:
     """Represent a websocket connection to a Plex server."""
 
-    def __init__(self, plex_server, callback, session=None):
+    def __init__(self, plex_server, callback, session=None, verify_ssl=True):
         """Initialize a PlexWebsocket instance.
 
         Parameters:
@@ -41,6 +41,8 @@ class PlexWebsocket:
                 A connected PlexServer instance.
             callback (Runnable):
                 Callback to issue when Plex player events occur.
+            verify_ssl:
+                Set to False to disable SSL certificate validation.
             session (aiohttp.ClientSession, optional):
                 Provide an optional session object.
 
@@ -51,6 +53,7 @@ class PlexWebsocket:
         self.callback = callback
         self._active = True
         self._current_task = None
+        self._ssl = False if verify_ssl is False else None
 
     @staticmethod
     def _get_uri(plex_server):
@@ -64,7 +67,7 @@ class PlexWebsocket:
         self._active = True
         while self._active:
             try:
-                async with self.session.ws_connect(self.uri, heartbeat=15) as ws_client:
+                async with self.session.ws_connect(self.uri, heartbeat=15, ssl=self._ssl) as ws_client:
                     self._current_task = asyncio.Task.current_task()
                     _LOGGER.debug("Websocket connected")
                     self.callback()
