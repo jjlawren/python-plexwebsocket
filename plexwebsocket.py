@@ -77,8 +77,8 @@ class PlexWebsocket:
                         if self.player_event(msg):
                             self.callback()
 
-            except aiohttp.client_exceptions.ClientConnectorError:
-                _LOGGER.debug("Websocket connection refused")
+            except aiohttp.client_exceptions.ClientConnectorError as e:
+                _LOGGER.error("Websocket connection refused: %s", e)
                 await asyncio.sleep(10)
             else:
                 _LOGGER.debug("Websocket disconnected")
