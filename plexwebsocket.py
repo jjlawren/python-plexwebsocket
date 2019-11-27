@@ -65,9 +65,13 @@ class PlexWebsocket:
     async def listen(self):
         """Open a persistent websocket connection and act on events."""
         self._active = True
+        failed_attempts = 0
         while self._active:
             try:
-                async with self.session.ws_connect(self.uri, heartbeat=15, ssl=self._ssl) as ws_client:
+                async with self.session.ws_connect(
+                    self.uri, heartbeat=15, ssl=self._ssl
+                ) as ws_client:
+                    failed_attempts = 0
                     self._current_task = asyncio.Task.current_task()
                     _LOGGER.debug("Websocket connected")
                     self.callback()
@@ -78,8 +82,18 @@ class PlexWebsocket:
                             self.callback()
 
             except aiohttp.client_exceptions.ClientConnectorError as e:
-                _LOGGER.error("Websocket connection refused: %s", e)
-                await asyncio.sleep(10)
+                if failed_attempts > 4:
+                    retry_delay = 300
+                elif failed_attempts > 0:
+                    retry_delay = 2 ** (failed_attempts - 1) * 30
+                else:
+                    retry_delay = 10
+                failed_attempts += 1
+
+                _LOGGER.error(
+                    "Websocket connection refused, retrying in %ss: %s", retry_delay, e
+                )
+                await asyncio.sleep(retry_delay)
             else:
                 _LOGGER.debug("Websocket disconnected")
                 if self._active:
