@@ -82,16 +82,10 @@ class PlexWebsocket:
                             self.callback()
 
             except aiohttp.client_exceptions.ClientConnectorError as e:
-                if failed_attempts > 4:
-                    retry_delay = 300
-                elif failed_attempts > 0:
-                    retry_delay = 2 ** (failed_attempts - 1) * 30
-                else:
-                    retry_delay = 10
+                retry_delay = min(2 ** (failed_attempts - 1) * 30, 300)
                 failed_attempts += 1
-
                 _LOGGER.error(
-                    "Websocket connection refused, retrying in %ss: %s", retry_delay, e
+                    "Websocket connection refused, retrying in %ds: %s", retry_delay, e
                 )
                 await asyncio.sleep(retry_delay)
             else:
