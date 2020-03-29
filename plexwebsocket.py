@@ -153,4 +153,5 @@ class PlexWebsocket:
     def close(self):
         """Close the listening websocket."""
         self._active = False
-        self._current_task.cancel()
+        if self._current_task is not None:
+            self._current_task.cancel()
