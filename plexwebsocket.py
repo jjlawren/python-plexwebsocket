@@ -81,13 +81,18 @@ class PlexWebsocket:
                         if self.player_event(msg):
                             self.callback()
 
-            except aiohttp.client_exceptions.ClientConnectorError as e:
+            except aiohttp.client_exceptions.ClientConnectionError as error:
                 retry_delay = min(2 ** (failed_attempts - 1) * 30, 300)
                 failed_attempts += 1
                 _LOGGER.error(
-                    "Websocket connection refused, retrying in %ds: %s", retry_delay, e
+                    "Websocket connection failed, retrying in %ds: %s",
+                    retry_delay,
+                    error,
                 )
                 await asyncio.sleep(retry_delay)
+            except Exception as error:  # pylint: disable=broad-except
+                _LOGGER.exception("Unexpected exception occurred: %s", error)
+                await asyncio.sleep(10)
             else:
                 _LOGGER.error("Websocket disconnected")
                 if self._active:
