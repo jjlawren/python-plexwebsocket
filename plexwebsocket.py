@@ -1,6 +1,5 @@
 """Support for issuing callbacks for Plex client updates via websockets."""
 import asyncio
-from concurrent.futures._base import CancelledError
 from datetime import datetime
 import logging
 
@@ -121,14 +120,10 @@ class PlexWebsocket:
                 )
                 self.state = STATE_DISCONNECTED
                 await asyncio.sleep(retry_delay)
-        except CancelledError:
-            _LOGGER.debug("Websocket future cancelled")
-            self.state = STATE_STOPPED
         except Exception as error:  # pylint: disable=broad-except
             if self.state != STATE_STOPPED:
                 _LOGGER.exception("Unexpected exception occurred: %s", error)
-                self.state = STATE_DISCONNECTED
-                await asyncio.sleep(10)
+                self.state = STATE_STOPPED
         else:
             if self.state != STATE_STOPPED:
                 self.state = STATE_DISCONNECTED
