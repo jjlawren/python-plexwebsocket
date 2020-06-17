@@ -109,7 +109,7 @@ class PlexWebsocket:
                         _LOGGER.error("AIOHTTP websocket error")
                         break
 
-        except aiohttp.ClientConnectionError as error:
+        except (aiohttp.ClientConnectionError, asyncio.TimeoutError) as error:
             if self.state != STATE_STOPPED:
                 retry_delay = min(2 ** (self.failed_attempts - 1) * 30, 300)
                 self.failed_attempts += 1
