@@ -7,6 +7,15 @@ import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
 
+SIGNAL_DATA = "data"
+SIGNAL_CONNECTION_STATE = "state"
+
+ERROR_AUTH_FAILURE = "Authorization failure"
+ERROR_TOO_MANY_RETRIES = "Too many retries"
+ERROR_UNKNOWN = "Unknown"
+
+MAX_FAILED_ATTEMPTS = 5
+
 STATE_CONNECTED = "connected"
 STATE_DISCONNECTED = "disconnected"
 STATE_STARTING = "starting"
@@ -47,7 +56,10 @@ class PlexWebsocket:
             plex_server (plexapi.server.PlexServer):
                 A connected PlexServer instance.
             callback (Runnable):
-                Callback to issue when Plex player events occur.
+                Called when interesting events occur. Provides arguments:
+                   signal (str): One of SIGNAL_* constants
+                   data (str): Current STATE_* or websocket payload contents
+                   error (str): Error message if any or None
             verify_ssl:
                 Set to False to disable SSL certificate validation.
             session (aiohttp.ClientSession, optional):
@@ -61,6 +73,7 @@ class PlexWebsocket:
         self._ssl = False if verify_ssl is False else None
         self._state = None
         self.failed_attempts = 0
+        self._error_reason = None
 
     @property
     def state(self):
@@ -72,6 +85,8 @@ class PlexWebsocket:
         """Set the state."""
         self._state = value
         _LOGGER.debug("Websocket %s", value)
+        self.callback(SIGNAL_CONNECTION_STATE, value, self._error_reason)
+        self._error_reason = None
 
     @staticmethod
     def _get_uri(plex_server):
@@ -90,7 +105,6 @@ class PlexWebsocket:
             ) as ws_client:
                 self.state = STATE_CONNECTED
                 self.failed_attempts = 0
-                self.callback()
 
                 async for message in ws_client:
                     if self.state == STATE_STOPPED:
@@ -99,7 +113,7 @@ class PlexWebsocket:
                     if message.type == aiohttp.WSMsgType.TEXT:
                         msg = message.json()["NotificationContainer"]
                         if self.player_event(msg):
-                            self.callback()
+                            self.callback(SIGNAL_DATA, msg, None)
 
                     elif message.type == aiohttp.WSMsgType.CLOSED:
                         _LOGGER.warning("AIOHTTP websocket connection closed")
@@ -109,8 +123,19 @@ class PlexWebsocket:
                         _LOGGER.error("AIOHTTP websocket error")
                         break
 
+        except aiohttp.ClientResponseError as error:
+            if error.code == 401:
+                _LOGGER.error("Credentials rejected: %s", error)
+                self._error_reason = ERROR_AUTH_FAILURE
+            else:
+                _LOGGER.error("Unexpected response received: %s", error)
+                self._error_reason = ERROR_UNKNOWN
+            self.state = STATE_STOPPED
         except (aiohttp.ClientConnectionError, asyncio.TimeoutError) as error:
-            if self.state != STATE_STOPPED:
+            if self.failed_attempts >= MAX_FAILED_ATTEMPTS:
+                self._error_reason = ERROR_TOO_MANY_RETRIES
+                self.state = STATE_STOPPED
+            elif self.state != STATE_STOPPED:
                 retry_delay = min(2 ** (self.failed_attempts - 1) * 30, 300)
                 self.failed_attempts += 1
                 _LOGGER.error(
@@ -123,6 +148,7 @@ class PlexWebsocket:
         except Exception as error:  # pylint: disable=broad-except
             if self.state != STATE_STOPPED:
                 _LOGGER.exception("Unexpected exception occurred: %s", error)
+                self._error_reason = ERROR_UNKNOWN
                 self.state = STATE_STOPPED
         else:
             if self.state != STATE_STOPPED:
