@@ -3,12 +3,12 @@ from setuptools import setup
 with open('README.md') as f:
     long_description = f.read()
 
-VERSION="0.0.12"
+VERSION="0.0.13"
 
 setup(
     name='plexwebsocket',
     version=VERSION,
-    description='Support for issuing callbacks in response to Plex websocket client updates.',
+    description='Support for issuing callbacks in response to Plex websocket updates.',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/jjlawren/python-plexwebsocket/',
