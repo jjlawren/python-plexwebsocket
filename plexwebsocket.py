@@ -7,8 +7,7 @@ import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
 
-SIGNAL_DATA = "data"
-SIGNAL_CONNECTION_STATE = "state"
+SIGNAL_CONNECTION_STATE = "plexwebsocket_state"
 
 ERROR_AUTH_FAILURE = "Authorization failure"
 ERROR_TOO_MANY_RETRIES = "Too many retries"
@@ -49,7 +48,14 @@ class PlexWebsocket:
 
     # pylint: disable=too-many-instance-attributes
 
-    def __init__(self, plex_server, callback, session=None, verify_ssl=True):
+    def __init__(
+        self,
+        plex_server,
+        callback,
+        subscriptions=["playing"],
+        session=None,
+        verify_ssl=True,
+    ):
         """Initialize a PlexWebsocket instance.
 
         Parameters:
@@ -57,9 +63,11 @@ class PlexWebsocket:
                 A connected PlexServer instance.
             callback (Runnable):
                 Called when interesting events occur. Provides arguments:
-                   signal (str): One of SIGNAL_* constants
+                   msgtype (str): Message type or SIGNAL_* constant
                    data (str): Current STATE_* or websocket payload contents
                    error (str): Error message if any or None
+            subscriptions (list<str>):
+                A list of event types to receive updates. See KNOWN_TYPES.
             verify_ssl:
                 Set to False to disable SSL certificate validation.
             session (aiohttp.ClientSession, optional):
@@ -70,6 +78,7 @@ class PlexWebsocket:
         self.uri = self._get_uri(plex_server)
         self.players = {}
         self.callback = callback
+        self.subscriptions = subscriptions
         self._ssl = False if verify_ssl is False else None
         self._state = None
         self.failed_attempts = 0
@@ -112,8 +121,19 @@ class PlexWebsocket:
 
                     if message.type == aiohttp.WSMsgType.TEXT:
                         msg = message.json()["NotificationContainer"]
-                        if self.player_event(msg):
-                            self.callback(SIGNAL_DATA, msg, None)
+                        msgtype = msg["type"]
+
+                        if msgtype not in self.subscriptions:
+                            _LOGGER.debug("Ignoring: %s", msg)
+                            continue
+
+                        if msgtype == "playing":
+                            if self.player_event(msg):
+                                self.callback(msgtype, msg, None)
+                            else:
+                                _LOGGER.debug("Ignoring player update: %s", msg)
+                        else:
+                            self.callback(msgtype, msg, None)
 
                     elif message.type == aiohttp.WSMsgType.CLOSED:
                         _LOGGER.warning("AIOHTTP websocket connection closed")
@@ -161,14 +181,6 @@ class PlexWebsocket:
     def player_event(self, msg):
         """Determine if messages relate to an interesting player event."""
         should_fire = False
-
-        if msg["type"] == "update.statechange":
-            # Fired when clients connects or disconnect
-            _LOGGER.debug("New client device detected")
-            return True
-        if msg["type"] != "playing":
-            # Only monitor events related to active sessions
-            return False
 
         payload = msg["PlaySessionStateNotification"][0]
 
