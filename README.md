@@ -21,7 +21,7 @@ def print_info(msgtype, data, error):
         print(f"Data: {data}")
 
 async def main():
-    ws = PlexWebsocket(plex, print_info, subscriptions=["playing", "state"])
+    ws = PlexWebsocket(plex, print_info, subscriptions=["playing", "status"])
     await ws.listen()
 
 if __name__ == '__main__':
