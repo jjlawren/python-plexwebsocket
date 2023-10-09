@@ -3,7 +3,7 @@ from setuptools import setup
 with open('README.md') as f:
     long_description = f.read()
 
-VERSION="0.0.13"
+VERSION="0.0.14"
 
 setup(
     name='plexwebsocket',
