@@ -183,8 +183,10 @@ class PlexWebsocket:
         should_fire = False
 
         payload = msg["PlaySessionStateNotification"][0]
+        _LOGGER.debug("Payload received: %s", payload)
 
-        session_id = payload["sessionKey"]
+        if (session_id := payload.get("sessionKey")) is None:
+            return False
         state = payload["state"]
         media_key = payload["key"]
         position = payload["viewOffset"]
