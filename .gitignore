@@ -1,4 +1,5 @@
 __pycache__/
 build/
 dist/
-plexwebsocket.egg-info/
+*.egg-info/
+.venv/

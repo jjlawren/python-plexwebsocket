@@ -1,0 +1,27 @@
+[build-system]
+requires = ["uv_build>=0.9,<0.14"]
+build-backend = "uv_build"
+
+[project]
+name = "plexwebsocket"
+version = "0.0.14"
+description = "Support for issuing callbacks in response to Plex websocket updates."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Jason Lawrence", email = "jjlawren@users.noreply.github.com" }]
+requires-python = ">=3.9"
+dependencies = ["aiohttp"]
+classifiers = [
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+]
+
+[dependency-groups]
+dev = ["pytest"]
+
+[project.urls]
+Homepage = "https://github.com/jjlawren/python-plexwebsocket"
+
+[tool.uv.build-backend]
+module-root = ""
