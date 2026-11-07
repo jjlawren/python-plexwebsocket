@@ -15,7 +15,7 @@ ERROR_AUTH_FAILURE = "Authorization failure"
 ERROR_TOO_MANY_RETRIES = "Too many retries"
 ERROR_UNKNOWN = "Unknown"
 
-MAX_FAILED_ATTEMPTS = 5
+MAX_FAILED_ATTEMPTS = 8
 
 STATE_CONNECTED = "connected"
 STATE_DISCONNECTED = "disconnected"
@@ -155,7 +155,11 @@ class PlexWebsocket:
                         break
 
         except aiohttp.ClientResponseError as error:
-            if error.code == 401:
+            if error.status >= 500:
+                # Transient proxy/server failure, retry
+                await self._retry(error)
+                return
+            if error.status == 401:
                 _LOGGER.error("Credentials rejected: %s", _redact(error))
                 self._error_reason = ERROR_AUTH_FAILURE
             else:
@@ -163,19 +167,7 @@ class PlexWebsocket:
                 self._error_reason = ERROR_UNKNOWN
             self.state = STATE_STOPPED
         except (aiohttp.ClientConnectionError, asyncio.TimeoutError) as error:
-            if self.failed_attempts >= MAX_FAILED_ATTEMPTS:
-                self._error_reason = ERROR_TOO_MANY_RETRIES
-                self.state = STATE_STOPPED
-            elif self.state != STATE_STOPPED:
-                retry_delay = min(2 ** (self.failed_attempts - 1) * 30, 300)
-                self.failed_attempts += 1
-                _LOGGER.error(
-                    "Websocket connection failed, retrying in %ds: %s",
-                    retry_delay,
-                    _redact(error),
-                )
-                self.state = STATE_DISCONNECTED
-                await asyncio.sleep(retry_delay)
+            await self._retry(error)
         except Exception as error:  # pylint: disable=broad-except
             if self.state != STATE_STOPPED:
                 _LOGGER.error("Unexpected exception occurred: %s", _redact(error))
@@ -188,6 +180,22 @@ class PlexWebsocket:
                 # Session IDs reset if Plex server has restarted, be safe
                 self.players.clear()
                 await asyncio.sleep(5)
+
+    async def _retry(self, error):
+        """Retry with backoffs."""
+        if self.failed_attempts >= MAX_FAILED_ATTEMPTS:
+            self._error_reason = ERROR_TOO_MANY_RETRIES
+            self.state = STATE_STOPPED
+        elif self.state != STATE_STOPPED:
+            retry_delay = min(5 * 2**self.failed_attempts, 60)
+            self.failed_attempts += 1
+            _LOGGER.error(
+                "Websocket connection failed, retrying in %ds: %s",
+                retry_delay,
+                _redact(error),
+            )
+            self.state = STATE_DISCONNECTED
+            await asyncio.sleep(retry_delay)
 
     def player_event(self, msg):
         """Determine if messages relate to an interesting player event."""
