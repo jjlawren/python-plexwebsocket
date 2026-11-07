@@ -1,7 +1,9 @@
 """Support for issuing callbacks for Plex client updates via websockets."""
+
 import asyncio
 from datetime import datetime
 import logging
+import re
 
 import aiohttp
 
@@ -19,6 +21,15 @@ STATE_CONNECTED = "connected"
 STATE_DISCONNECTED = "disconnected"
 STATE_STARTING = "starting"
 STATE_STOPPED = "stopped"
+
+PLEX_TOKEN_PARAM = "X-Plex-Token"
+
+_TOKEN_RE = re.compile(rf"({PLEX_TOKEN_PARAM}=)[^&'\"\s]+", re.IGNORECASE)
+
+
+def _redact(error):
+    """Return the error text with the Plex token masked."""
+    return _TOKEN_RE.sub(r"\1REDACTED", str(error))
 
 
 class WebsocketPlayer:  # pylint: disable=too-few-public-methods
@@ -145,10 +156,10 @@ class PlexWebsocket:
 
         except aiohttp.ClientResponseError as error:
             if error.code == 401:
-                _LOGGER.error("Credentials rejected: %s", error)
+                _LOGGER.error("Credentials rejected: %s", _redact(error))
                 self._error_reason = ERROR_AUTH_FAILURE
             else:
-                _LOGGER.error("Unexpected response received: %s", error)
+                _LOGGER.error("Unexpected response received: %s", _redact(error))
                 self._error_reason = ERROR_UNKNOWN
             self.state = STATE_STOPPED
         except (aiohttp.ClientConnectionError, asyncio.TimeoutError) as error:
@@ -161,13 +172,13 @@ class PlexWebsocket:
                 _LOGGER.error(
                     "Websocket connection failed, retrying in %ds: %s",
                     retry_delay,
-                    error,
+                    _redact(error),
                 )
                 self.state = STATE_DISCONNECTED
                 await asyncio.sleep(retry_delay)
         except Exception as error:  # pylint: disable=broad-except
             if self.state != STATE_STOPPED:
-                _LOGGER.exception("Unexpected exception occurred: %s", error)
+                _LOGGER.error("Unexpected exception occurred: %s", _redact(error))
                 self._error_reason = ERROR_UNKNOWN
                 self.state = STATE_STOPPED
         else:
