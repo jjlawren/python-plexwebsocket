@@ -52,15 +52,18 @@ def _run(error, caplog, monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "status, reason", [(401, ERROR_AUTH_FAILURE), (502, ERROR_UNKNOWN)]
+    "status, state, reason",
+    [
+        (401, STATE_STOPPED, ERROR_AUTH_FAILURE),
+        (403, STATE_STOPPED, ERROR_UNKNOWN),
+        (502, STATE_DISCONNECTED, None),
+    ],
 )
-def test_handshake_error(status, reason, caplog, monkeypatch):
+def test_handshake_error(status, state, reason, caplog, monkeypatch):
     ws, callback = _run(_handshake_error(status), caplog, monkeypatch)
 
-    assert ws.state == STATE_STOPPED
-    callback.assert_called_with(
-        plexwebsocket.SIGNAL_CONNECTION_STATE, STATE_STOPPED, reason
-    )
+    assert ws.state == state
+    callback.assert_called_with(plexwebsocket.SIGNAL_CONNECTION_STATE, state, reason)
     assert str(status) in caplog.text
     assert TOKEN not in caplog.text
 
@@ -71,5 +74,6 @@ def test_connection_error_retry(caplog, monkeypatch):
 
     assert ws.state == STATE_DISCONNECTED
     assert ws.failed_attempts == 1
+    plexwebsocket.asyncio.sleep.assert_awaited_once_with(5)
     assert "retrying" in caplog.text
     assert TOKEN not in caplog.text
