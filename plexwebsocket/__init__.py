@@ -4,8 +4,11 @@ import asyncio
 import logging
 import re
 from datetime import datetime
+from importlib.metadata import version
 
 import aiohttp
+
+__version__ = version("plexwebsocket")
 
 _LOGGER = logging.getLogger(__name__)
 
