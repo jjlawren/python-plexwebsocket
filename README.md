@@ -10,9 +10,10 @@ from plexwebsocket import PlexWebsocket, SIGNAL_CONNECTION_STATE
 
 logging.basicConfig(level=logging.DEBUG)
 
-baseurl = 'http://<PLEX_SERVER_IP>:32400'
-token = '<YOUR_TOKEN_HERE>'
+baseurl = "http://<PLEX_SERVER_IP>:32400"
+token = "<YOUR_TOKEN_HERE>"
 plex = PlexServer(baseurl, token)
+
 
 def print_info(msgtype, data, error):
     if msgtype == SIGNAL_CONNECTION_STATE:
@@ -20,11 +21,13 @@ def print_info(msgtype, data, error):
     else:
         print(f"Data: {data}")
 
+
 async def main():
     ws = PlexWebsocket(plex, print_info, subscriptions=["playing", "status"])
     await ws.listen()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
 ```

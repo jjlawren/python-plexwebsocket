@@ -1,11 +1,12 @@
 """Tests for token redaction and handshake error handling."""
+
 import asyncio
 import logging
 from unittest.mock import AsyncMock, MagicMock
 
 import aiohttp
-from multidict import CIMultiDict
 import pytest
+from multidict import CIMultiDict
 from yarl import URL
 
 import plexwebsocket

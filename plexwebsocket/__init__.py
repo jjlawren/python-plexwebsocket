@@ -1,9 +1,9 @@
 """Support for issuing callbacks for Plex client updates via websockets."""
 
 import asyncio
-from datetime import datetime
 import logging
 import re
+from datetime import datetime
 
 import aiohttp
 
@@ -49,9 +49,7 @@ class WebsocketPlayer:  # pylint: disable=too-few-public-methods
         posdiff = (new_position - self.position) / 1000
         diffdiff = timediff - posdiff
 
-        if abs(diffdiff) > 5:
-            return True
-        return False
+        return abs(diffdiff) > 5
 
 
 class PlexWebsocket:
@@ -63,7 +61,7 @@ class PlexWebsocket:
         self,
         plex_server,
         callback,
-        subscriptions=["playing"],
+        subscriptions=("playing",),
         session=None,
         verify_ssl=True,
     ):
@@ -168,7 +166,7 @@ class PlexWebsocket:
             self.state = STATE_STOPPED
         except (aiohttp.ClientConnectionError, asyncio.TimeoutError) as error:
             await self._retry(error)
-        except Exception as error:  # pylint: disable=broad-except
+        except Exception as error:  # noqa: BLE001
             if self.state != STATE_STOPPED:
                 _LOGGER.error("Unexpected exception occurred: %s", _redact(error))
                 self._error_reason = ERROR_UNKNOWN

@@ -18,7 +18,10 @@ classifiers = [
 ]
 
 [dependency-groups]
-dev = ["pytest"]
+dev = [
+    "pre-commit",
+    "pytest",
+]
 
 [project.urls]
 Homepage = "https://github.com/jjlawren/python-plexwebsocket"
