@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "plexwebsocket"
-version = "0.0.14"
+version = "0.1.0"
 description = "Support for issuing callbacks in response to Plex websocket updates."
 readme = "README.md"
 license = "MIT"

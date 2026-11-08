@@ -548,7 +548,7 @@ wheels = [
 
 [[package]]
 name = "plexwebsocket"
-version = "0.0.14"
+version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
