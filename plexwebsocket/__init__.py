@@ -164,7 +164,7 @@ class PlexWebsocket:
                 _LOGGER.error("Unexpected response received: %s", _redact(error))
                 self._error_reason = ERROR_UNKNOWN
             self.state = STATE_STOPPED
-        except (aiohttp.ClientConnectionError, asyncio.TimeoutError) as error:
+        except (TimeoutError, aiohttp.ClientConnectionError) as error:
             await self._retry(error)
         except Exception as error:  # noqa: BLE001
             if self.state != STATE_STOPPED:
